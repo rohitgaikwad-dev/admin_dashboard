@@ -1,6 +1,6 @@
-import { AuthProvider } from "@refinedev/core";
+import { AuthBindings } from "@refinedev/core";
 
-import { User } from "@/graphql/schema.types";
+// import { User } from "@/graphql/schema.types";
 
 import { API_URL, dataProvider } from "./data";
 
@@ -12,7 +12,7 @@ export const authCredentials = {
   password: "hornetboy",
 };
 
-export const authProvider: AuthProvider = {
+export const authProvider: AuthBindings = {
   login: async ({ email }: { email: string }) => {
     try {
       const { data } = await dataProvider.custom({
@@ -61,14 +61,13 @@ export const authProvider: AuthProvider = {
     };
   },
 
-  onError: async (error: Error) => {
-    if (error.statusCode === "UNAUTHENTICATED") {
+  onError: async (error: any) => {
+    if (error && error.statusCode === "UNAUTHENTICATED") {
       return {
         logout: true,
         ...error,
       };
     }
-
     return { error };
   },
 
@@ -105,7 +104,7 @@ export const authProvider: AuthProvider = {
     const accessToken = localStorage.getItem("access_token");
 
     try {
-      const { data } = await dataProvider.custom<{ me: User }>({
+      const { data } = await dataProvider.custom<{ me: any }>({
         url: API_URL,
         method: "post",
         headers: accessToken
