@@ -1,12 +1,9 @@
 import { AuthBindings } from "@refinedev/core";
-
-// import { User } from "@/graphql/schema.types";
-
 import { API_URL, dataProvider } from "./data";
 
-/**
- * For demo purposes and to make it easier to test the app, you can use the following credentials:
- */
+// Use constants for magic strings
+const ACCESS_TOKEN_KEY = "access_token";
+
 export const authCredentials = {
   email: "hornetbot@gmail.com",
   password: "hornetboy",
@@ -22,38 +19,39 @@ export const authProvider: AuthBindings = {
         meta: {
           variables: { email },
           rawQuery: `
-                mutation Login($email: String!) {
-                    login(loginInput: {
-                      email: $email
-                    }) {
-                      accessToken,
-                    }
-                  }
-                `,
+            mutation Login($email: String!) {
+              login(loginInput: {
+                email: $email
+              }) {
+                accessToken
+              }
+            }
+          `,
         },
       });
 
-      localStorage.setItem("access_token", data.login.accessToken);
+      // Store the access token securely
+      localStorage.setItem(ACCESS_TOKEN_KEY, data.login.accessToken);
 
       return {
         success: true,
         redirectTo: "/",
       };
-    } catch (e) {
-      const error = e as Error;
-
+    } catch (error) {
+      // Handle login errors
+      console.error("Login failed:", error);
       return {
         success: false,
         error: {
-          message: "message" in error ? error.message : "Login failed",
-          name: "name" in error ? error.name : "Invalid email or password",
+          message: "Login failed. Please check your email and password.",
         },
       };
     }
   },
 
   logout: async () => {
-    localStorage.removeItem("access_token");
+    // Remove the access token on logout
+    localStorage.removeItem(ACCESS_TOKEN_KEY);
 
     return {
       success: true,
@@ -63,9 +61,10 @@ export const authProvider: AuthBindings = {
 
   onError: async (error: any) => {
     if (error && error.statusCode === "UNAUTHENTICATED") {
+      // Logout user if unauthenticated
       return {
         logout: true,
-        ...error,
+        redirectTo: "/login",
       };
     }
     return { error };
@@ -73,18 +72,19 @@ export const authProvider: AuthBindings = {
 
   check: async () => {
     try {
+      // Check if the user is authenticated
       await dataProvider.custom({
         url: API_URL,
         method: "post",
         headers: {},
         meta: {
           rawQuery: `
-                    query Me {
-                        me {
-                          name
-                        }
-                      }
-                `,
+            query Me {
+              me {
+                name
+              }
+            }
+          `,
         },
       });
 
@@ -101,36 +101,33 @@ export const authProvider: AuthBindings = {
   },
 
   getIdentity: async () => {
-    const accessToken = localStorage.getItem("access_token");
+    const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
 
     try {
       const { data } = await dataProvider.custom<{ me: any }>({
         url: API_URL,
         method: "post",
-        headers: accessToken
-          ? {
-              Authorization: `Bearer ${accessToken}`,
-            }
-          : {},
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : {},
         meta: {
           rawQuery: `
-                    query Me {
-                        me {
-                            id,
-                            name,
-                            email,
-                            phone,
-                            jobTitle,
-                            timezone
-                            avatarUrl
-                        }
-                      }
-                `,
+            query Me {
+              me {
+                id
+                name
+                email
+                phone
+                jobTitle
+                timezone
+                avatarUrl
+              }
+            }
+          `,
         },
       });
 
       return data.me;
     } catch (error) {
+      console.error("Failed to get user identity:", error);
       return undefined;
     }
   },
